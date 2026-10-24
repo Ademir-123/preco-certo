@@ -404,8 +404,22 @@ function priceImportReview(){
   return '<div class="price-import-row"><div class="price-import-product">'+(index+1)+'. '+escapeHTML(p.name||"Produto sem nome")+'</div><div class="price-import-meta">Leitura da IA: '+escapeHTML(confidence)+' confiança'+(existing?' · produto já cadastrado: será atualizado':' · produto novo')+'</div><label>Nome do produto<input data-price-import-row="'+index+'" data-price-import-field="name" maxlength="140" value="'+escapeHTML(p.name||"")+'" required></label><div class="admin-inline"><div><label>Unidade / tamanho<input data-price-import-row="'+index+'" data-price-import-field="size" maxlength="60" value="'+escapeHTML(p.size||"")+'" placeholder="Ex.: 5 kg"></label></div><div><label>Categoria<select data-price-import-row="'+index+'" data-price-import-field="category">'+categoryOptions+'</select></label></div></div><div class="admin-inline"><div><label>Preço atual (R$)<input type="number" min="0" step="0.01" data-price-import-row="'+index+'" data-price-import-field="price" value="'+escapeHTML(p.price==null?"":String(p.price))+'" required></label></div><div><label>Preço anterior (R$)<input type="number" min="0" step="0.01" data-price-import-row="'+index+'" data-price-import-field="old_price" value="'+escapeHTML(p.old_price==null?"":String(p.old_price))+'" placeholder="Opcional"></label></div></div><label>Validade da oferta (opcional)<input type="date" data-price-import-row="'+index+'" data-price-import-field="valid_until" value="'+escapeHTML(p.valid_until||"")+'"></label></div>'
  }).join("")+'<div class="price-import-review-actions"><button type="button" class="btn p w" data-a="savePriceRows">Conferi tudo — salvar no Supabase</button><button type="button" class="btn s w" data-a="clearPriceRows">Descartar leitura</button></div></div>';
 }
-function priceTableFileToDataUrl(file){
- return new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(String(reader.result||""))};reader.onerror=function(){reject(new Error("Não consegui ler o arquivo da imagem."))};reader.readAsDataURL(file)});
+async function priceTableFileToDataUrl(file){
+ if(typeof createImageBitmap!=="function")return new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(String(reader.result||""))};reader.onerror=function(){reject(new Error("Não consegui ler o arquivo da imagem."))};reader.readAsDataURL(file)});
+ var bitmap=await createImageBitmap(file),maxSide=2600,scale=Math.min(1,maxSide/Math.max(bitmap.width,bitmap.height));
+ function render(max,quality){
+  var ratio=Math.min(1,max/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(bitmap.width*ratio));canvas.height=Math.max(1,Math.round(bitmap.height*ratio));
+  var ctx=canvas.getContext("2d");if(!ctx)throw new Error("Não consegui preparar a imagem.");
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  return new Promise(function(resolve,reject){canvas.toBlob(function(blob){if(blob)resolve(blob);else reject(new Error("Não consegui comprimir a imagem."))},"image/jpeg",quality)});
+ }
+ try{
+  var blob=await render(maxSide,0.86);
+  if(blob.size>1800*1024)blob=await render(2400,0.78);
+  if(blob.size>1800*1024)blob=await render(2000,0.76);
+  return await new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(String(reader.result||""))};reader.onerror=function(){reject(new Error("Não consegui ler a imagem preparada."))};reader.readAsDataURL(blob)});
+ }finally{if(bitmap.close)bitmap.close()}
 }
 async function analyzePriceTable(button){
  if(!S.adminAccess||!S.adminMarket||!supabaseClient){toast("Entre na conta aprovada do seu mercado para importar preços.");return}
@@ -419,7 +433,9 @@ async function analyzePriceTable(button){
   var result=await supabaseClient.functions.invoke("read-price-table",{body:{image_data_url:dataUrl,file_name:file.name,market_id:String(S.adminMarket.id)}});
   if(result.error){
    console.error("Falha na leitura da tabela:",result.error);
-   throw new Error("Não consegui ler a tabela. Verifique se a função de IA está configurada no Supabase e tente novamente. Detalhe: "+(result.error.message||"erro de conexão"));
+   var friendlyError=result.error.message||"erro de conexão";
+   try{if(result.error.context&&typeof result.error.context.clone==="function"){var bodyError=await result.error.context.clone().json();if(bodyError&&bodyError.error)friendlyError=bodyError.error}}catch(_){}
+   throw new Error(friendlyError);
   }
   var rows=result.data&&result.data.products;
   if(!Array.isArray(rows)||!rows.length)throw new Error("A IA não identificou linhas de produtos com preços legíveis. Tente uma foto mais nítida e bem enquadrada.");
