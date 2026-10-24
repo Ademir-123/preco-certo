@@ -145,6 +145,22 @@ form input,form select{width:100%;height:44px;border:1px solid var(--bd);border-
 .admin-store-meta{font-size:12px;color:#477257;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}
 .admin-section-title{font-size:16px;font-weight:850;margin:4px 0 10px;display:flex;align-items:center;gap:8px}
 .admin-section-title span{font-size:12px;font-weight:650;color:var(--mut)}
+
+.price-import-help{font-size:12px;line-height:1.55;color:var(--mut);margin:6px 0 12px}
+.price-import-file{margin-top:8px}
+.price-import-file .upload-box{min-height:90px}
+.price-import-file-name{font-size:12px;color:var(--mut);overflow-wrap:anywhere;margin:7px 0}
+.price-import-status{border:1px solid #d8e9dc;background:#f7fcf8;color:#285c39;border-radius:11px;padding:10px;font-size:12px;line-height:1.5;margin:10px 0}
+.price-import-review{margin-top:14px}
+.price-import-row{border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0;background:#fff}
+.price-import-row .admin-inline{margin-top:8px}
+.price-import-row label{font-size:11px!important;font-weight:700;display:block;margin-bottom:4px}
+.price-import-row input,.price-import-row select{width:100%;min-width:0;border:1px solid var(--bd);border-radius:9px;background:#fff;padding:9px;font:inherit;font-size:13px;margin-top:4px}
+.price-import-row .price-import-product{font-size:13px;font-weight:800;line-height:1.4}
+.price-import-row .price-import-meta{font-size:11px;color:var(--mut);margin-top:5px;line-height:1.45}
+.price-import-review-actions{display:grid;gap:8px;margin-top:12px}
+.price-import-review-actions .btn{width:100%}
+.price-import-warning{font-size:11px;color:#854d0e;line-height:1.4;margin-top:5px}
 .admin-panel{border:1px solid #dcebe0;border-radius:16px;background:#fff;padding:15px;margin-bottom:14px;box-shadow:0 2px 7px #14532d08}
 .admin-panel form label{color:#334155}
 .admin-panel .sub{line-height:1.45}
@@ -188,7 +204,7 @@ var iso=function(d){var x=new Date();x.setDate(x.getDate()+d);return x.toISOStri
 var TODAY=iso(0);
 var seed={markets:[{id:"A",n:"Mercado A",la:-17.810,lo:-50.599},{id:"B",n:"Mercado B",la:-17.820,lo:-50.605},{id:"C",n:"Mercado C",la:-17.805,lo:-50.585},{id:"D",n:"Mercado D",la:-17.830,lo:-50.580}],
 offers:[["Arroz Branco Prato Fino","5kg • Tipo 1","A",24.9,27.9,3,"alimentos"],["Banana Prata","Kg","B",4.99,6.99,4,"hortifruti"],["Coxa e Sobrecoxa de Frango","Kg","C",8.9,11.9,3,"carnes"],["Extrato de Tomate Quero","340g","A",2.99,4.49,2,"alimentos"],["Óleo de Soja Liza","900ml","D",6.49,8.9,4,"alimentos"],["Arroz Branco Prato Fino","5kg • Tipo 1","C",25.5,0,0,"alimentos"],["Arroz Branco Prato Fino","5kg • Tipo 1","B",26.9,28.5,5,"alimentos"],["Banana Prata","Kg","A",5.49,0,0,"hortifruti"],["Óleo de Soja Liza","900ml","A",7.2,0,0,"alimentos"],["Extrato de Tomate Quero","340g","D",3.19,0,0,"alimentos"]]};
-var S={markets:seed.markets,offers:seed.offers.map(function(o,i){return{id:"s"+i,n:o[0],s:o[1],m:o[2],p:o[3],o:o[4]||0,v:o[5]?iso(o[5]):"",c:o[6]}}),promotions:[],activePromotion:null,list:{},favs:[],view:"login",cat:"todos",q:"",compareQ:"",marketFilter:null,loc:null,city:"Santa Helena de Goiás",adminMarket:null,adminProducts:[],adminPromotions:[],adminAccess:false,adminPending:false,adminRejected:false,adminApplication:null,adminLoading:false,adminError:""};
+var S={markets:seed.markets,offers:seed.offers.map(function(o,i){return{id:"s"+i,n:o[0],s:o[1],m:o[2],p:o[3],o:o[4]||0,v:o[5]?iso(o[5]):"",c:o[6]}}),promotions:[],activePromotion:null,list:{},favs:[],view:"login",cat:"todos",q:"",compareQ:"",marketFilter:null,loc:null,city:"Santa Helena de Goiás",adminMarket:null,adminProducts:[],adminPromotions:[],adminAccess:false,adminPending:false,adminRejected:false,adminApplication:null,adminLoading:false,adminError:"",priceImportRows:[]};
 try{var sv=JSON.parse(localStorage.getItem(K)||"null");if(sv){["markets","offers","list","favs"].forEach(function(k){if(sv[k])S[k]=sv[k]})}}catch(e){}
 function save(){try{localStorage.setItem(K,JSON.stringify({markets:S.markets,offers:S.offers,list:S.list,favs:S.favs}))}catch(e){}}
 // Quando configurado, o Supabase é a fonte principal. Se o banco ainda estiver vazio, preserva o catálogo de demonstração/cache local.
@@ -376,6 +392,83 @@ async function loadAdminProfile(){
  }catch(err){console.error("Falha ao carregar o perfil do mercado:",err);S.adminAccess=false;S.adminMarket=null;S.adminProducts=[];S.adminPromotions=[];S.adminError=err.message||"Não foi possível carregar os dados do mercado.";return false}
  finally{S.adminLoading=false}
 }
+
+var PRICE_IMPORT_CATEGORIES=[["alimentos","Alimentos"],["hortifruti","Hortifruti"],["carnes","Carnes"],["bebidas","Bebidas"],["limpeza","Limpeza"],["higiene","Higiene"],["outros","Outros"]];
+function priceImportReview(){
+ var rows=Array.isArray(S.priceImportRows)?S.priceImportRows:[];
+ if(!rows.length)return "";
+ return '<div class="price-import-review"><div class="admin-section-title">Conferir produtos lidos <span>'+rows.length+'</span></div><div class="price-import-help">Revise os nomes e os preços antes de salvar. Produtos com o mesmo nome e tamanho neste mercado serão atualizados; os novos serão cadastrados.</div>'+rows.map(function(p,index){
+  var categoryOptions=PRICE_IMPORT_CATEGORIES.map(function(c){return'<option value="'+c[0]+'"'+(p.category===c[0]?' selected':'')+'>'+c[1]+'</option>'}).join("");
+  var confidence=p.confidence||"media";
+  var existing=S.offers.filter(function(o){return String(o.m)===String(S.adminMarket&&S.adminMarket.id)&&normalizeSearch(o.n)===normalizeSearch(p.name)&&normalizeSearch(o.s)===normalizeSearch(p.size)})[0];
+  return '<div class="price-import-row"><div class="price-import-product">'+(index+1)+'. '+escapeHTML(p.name||"Produto sem nome")+'</div><div class="price-import-meta">Leitura da IA: '+escapeHTML(confidence)+' confiança'+(existing?' · produto já cadastrado: será atualizado':' · produto novo')+'</div><label>Nome do produto<input data-price-import-row="'+index+'" data-price-import-field="name" maxlength="140" value="'+escapeHTML(p.name||"")+'" required></label><div class="admin-inline"><div><label>Unidade / tamanho<input data-price-import-row="'+index+'" data-price-import-field="size" maxlength="60" value="'+escapeHTML(p.size||"")+'" placeholder="Ex.: 5 kg"></label></div><div><label>Categoria<select data-price-import-row="'+index+'" data-price-import-field="category">'+categoryOptions+'</select></label></div></div><div class="admin-inline"><div><label>Preço atual (R$)<input type="number" min="0" step="0.01" data-price-import-row="'+index+'" data-price-import-field="price" value="'+escapeHTML(p.price==null?"":String(p.price))+'" required></label></div><div><label>Preço anterior (R$)<input type="number" min="0" step="0.01" data-price-import-row="'+index+'" data-price-import-field="old_price" value="'+escapeHTML(p.old_price==null?"":String(p.old_price))+'" placeholder="Opcional"></label></div></div><label>Validade da oferta (opcional)<input type="date" data-price-import-row="'+index+'" data-price-import-field="valid_until" value="'+escapeHTML(p.valid_until||"")+'"></label></div>'
+ }).join("")+'<div class="price-import-review-actions"><button type="button" class="btn p w" data-a="savePriceRows">Conferi tudo — salvar no Supabase</button><button type="button" class="btn s w" data-a="clearPriceRows">Descartar leitura</button></div></div>';
+}
+function priceTableFileToDataUrl(file){
+ return new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(String(reader.result||""))};reader.onerror=function(){reject(new Error("Não consegui ler o arquivo da imagem."))};reader.readAsDataURL(file)});
+}
+async function analyzePriceTable(button){
+ if(!S.adminAccess||!S.adminMarket||!supabaseClient){toast("Entre na conta aprovada do seu mercado para importar preços.");return}
+ var input=$("priceTableImage"), file=input&&input.files&&input.files[0];
+ if(!file){toast("Escolha uma foto legível da tabela de preços.");return}
+ if(!["image/jpeg","image/png","image/webp"].includes(file.type)){toast("Envie uma imagem JPG, PNG ou WebP.");return}
+ if(file.size>6*1024*1024){toast("A imagem deve ter no máximo 6 MB.");return}
+ button.disabled=true;button.textContent="Lendo a tabela...";
+ try{
+  var dataUrl=await priceTableFileToDataUrl(file);
+  var result=await supabaseClient.functions.invoke("read-price-table",{body:{image_data_url:dataUrl,file_name:file.name,market_id:String(S.adminMarket.id)}});
+  if(result.error){
+   console.error("Falha na leitura da tabela:",result.error);
+   throw new Error("Não consegui ler a tabela. Verifique se a função de IA está configurada no Supabase e tente novamente. Detalhe: "+(result.error.message||"erro de conexão"));
+  }
+  var rows=result.data&&result.data.products;
+  if(!Array.isArray(rows)||!rows.length)throw new Error("A IA não identificou linhas de produtos com preços legíveis. Tente uma foto mais nítida e bem enquadrada.");
+  S.priceImportRows=rows.slice(0,100).map(function(p){
+   var price=Number(p.price);
+   return{name:String(p.name||"").trim(),size:String(p.size||"").trim(),price:Number.isFinite(price)?price:"",old_price:p.old_price==null?"":Number(p.old_price),category:PRICE_IMPORT_CATEGORIES.some(function(c){return c[0]===p.category})?p.category:"alimentos",valid_until:/^\d{4}-\d{2}-\d{2}$/.test(String(p.valid_until||""))?String(p.valid_until):"",confidence:["alta","media","baixa"].includes(p.confidence)?p.confidence:"media"};
+  }).filter(function(p){return p.name.length>0});
+  if(!S.priceImportRows.length)throw new Error("A IA não retornou produtos válidos para conferir.");
+  R();toast(S.priceImportRows.length+" produto(s) extraído(s). Confira antes de salvar.");
+ }catch(err){console.error(err);toast(err.message||"Falha ao analisar a imagem.")}
+ finally{var current=$("analyzePriceTableBtn");if(current){current.disabled=false;current.textContent="Ler tabela com IA"}}
+}
+async function savePriceImportRows(button){
+ if(!S.adminAccess||!S.adminMarket||!supabaseClient){toast("Entre na conta aprovada do seu mercado para salvar preços.");return}
+ var rows=(S.priceImportRows||[]).slice();
+ if(!rows.length){toast("Primeiro leia uma tabela de preços.");return}
+ var seen={};
+ for(var i=0;i<rows.length;i++){
+  var p=rows[i],name=String(p.name||"").trim(),size=String(p.size||"").trim(),price=Number(p.price),identity=normalizeSearch(name)+"|"+normalizeSearch(size);
+  if(name.length<2){toast("Confira o nome do produto "+(i+1)+".");return}
+  if(!Number.isFinite(price)||price<0){toast("Confira o preço de "+name+".");return}
+  if(seen[identity]){toast("Há dois itens iguais na leitura: "+name+". Confira antes de salvar.");return}
+  seen[identity]=true;
+ }
+ button.disabled=true;button.textContent="Salvando preços...";
+ try{
+  var marketId=String(S.adminMarket.id), inserts=[], updates=[];
+  rows.forEach(function(p){
+   var name=String(p.name).trim(),size=String(p.size||"").trim(),price=Number(p.price),old=Number(p.old_price);
+   var valid=/^\d{4}-\d{2}-\d{2}$/.test(String(p.valid_until||""))?String(p.valid_until):null;
+   var oldPrice=Number.isFinite(old)&&old>price?old:0;
+   var category=PRICE_IMPORT_CATEGORIES.some(function(c){return c[0]===p.category})?p.category:"alimentos";
+   var existing=S.offers.filter(function(o){return String(o.m)===marketId&&normalizeSearch(o.n)===normalizeSearch(name)&&normalizeSearch(o.s)===normalizeSearch(size)})[0];
+   var data={n:name,s:size,m:marketId,p:price,o:oldPrice,v:valid,c:category};
+   if(existing)updates.push({id:String(existing.id),data:data});
+   else inserts.push(Object.assign({id:makeRecordId(),img:null},data));
+  });
+  var results=await Promise.all(updates.map(function(u){return supabaseClient.from("offers").update(u.data).eq("id",u.id).eq("m",marketId)}));
+  var failed=results.filter(function(r){return r.error});
+  if(failed.length)throw failed[0].error;
+  if(inserts.length){var ins=await supabaseClient.from("offers").insert(inserts);if(ins.error)throw ins.error}
+  var count=rows.length,updated=updates.length,added=inserts.length;
+  S.priceImportRows=[];
+  await loadRemoteData();await loadAdminProfile();R();
+  toast(count+" preço(s) processado(s): "+added+" novo(s), "+updated+" atualizado(s).");
+ }catch(err){console.error("Falha ao salvar preços importados:",err);toast(err.message||"Não foi possível salvar os preços no Supabase.");await loadRemoteData();await loadAdminProfile();R()}
+ finally{var current=$("[data-a='savePriceRows']");if(current){current.disabled=false;current.textContent="Conferi tudo — salvar no Supabase"}}
+}
+
 function vAdminMarket(){
  var m=S.adminMarket||{}, products=S.adminProducts||[], promos=S.adminPromotions||[];
  var photo=m.photo_url||"", marketName=escapeHTML(m.n||"Meu Mercado"), address=escapeHTML(m.address||"Endereço não informado"), phone=escapeHTML(m.phone||"Telefone não informado");
@@ -386,7 +479,7 @@ function vAdminMarket(){
  '<div class="admin-hero"><div class="admin-hero-top"><div class="admin-store-photo">'+(photo?'<img src="'+escapeHTML(photo)+'" alt="Foto de '+marketName+'" style="width:100%;height:100%;object-fit:cover;border-radius:15px">':'')+'</div><div style="min-width:0;flex:1"><div class="admin-store-name">'+marketName+'</div><div class="admin-store-meta">'+address+'<br>'+phone+'<br>'+escapeHTML(S.user&&S.user.email||"")+'</div></div></div><div class="chips" style="margin-top:14px"><span class="chip on">'+products.length+' produto(s)</span><span class="chip">'+promos.length+' promoção(ões)</span></div></div>'+
  '<div class="admin-panel"><div class="admin-section-title">'+ic("store")+' Dados do mercado</div><div class="sub" style="margin-bottom:10px">Essas informações formam o perfil do seu estabelecimento.</div><form id="marketProfileForm"><label for="editMarketName">Nome do mercado *</label><input id="editMarketName" name="name" required maxlength="120" value="'+escapeHTML(m.n||"")+'"><label for="editMarketOwner">Nome do responsável</label><input id="editMarketOwner" name="owner_name" maxlength="120" value="'+escapeHTML(m.owner_name||"")+'"><label for="editMarketAddress">Endereço completo *</label><input id="editMarketAddress" name="address" required maxlength="240" value="'+escapeHTML(m.address||"")+'"><label for="editMarketPhone">Telefone/WhatsApp</label><input id="editMarketPhone" name="phone" maxlength="40" value="'+escapeHTML(m.phone||"")+'"><label for="editMarketDescription">Descrição do mercado</label><textarea id="editMarketDescription" name="description" rows="3" style="width:100%;border:1px solid var(--bd);border-radius:10px;padding:10px;font:inherit;font-size:14px;resize:vertical">'+escapeHTML(m.description||"")+'</textarea><label for="marketPhotoEdit">Foto ou fachada do mercado</label><label class="upload-box" for="marketPhotoEdit"><span class="upload-plus">+</span><span class="upload-text">Adicionar imagem</span><input id="marketPhotoEdit" name="photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><div class="sub" style="margin:6px 0 12px">Imagem de até 6 MB. Deixe em branco para manter a foto atual.</div><button type="submit" class="btn p w">Salvar perfil do mercado</button></form></div>'+
  '<div class="admin-panel"><div class="admin-section-title">'+ic("plus")+' Cadastrar produto</div><form id="productForm"><label for="productName">Nome do produto *</label><input id="productName" name="name" required maxlength="140" placeholder="Ex.: Arroz tipo 1 5 kg"><div class="admin-inline"><div><label for="productSize">Peso / unidade</label><input id="productSize" name="size" maxlength="60" placeholder="Ex.: 5 kg"></div><div><label for="productCategory">Categoria *</label><select id="productCategory" name="category" required><option value="alimentos">Alimentos</option><option value="hortifruti">Hortifruti</option><option value="carnes">Carnes</option><option value="bebidas">Bebidas</option><option value="limpeza">Limpeza</option><option value="higiene">Higiene</option><option value="outros">Outros</option></select></div></div><div class="admin-inline"><div><label for="productPrice">Preço atual (R$) *</label><input id="productPrice" name="price" type="number" min="0" step="0.01" required placeholder="0,00"></div><div><label for="productOldPrice">Preço anterior (R$)</label><input id="productOldPrice" name="old_price" type="number" min="0" step="0.01" placeholder="Opcional"></div></div><label for="productValidity">Validade da oferta</label><input id="productValidity" name="valid_until" type="date"><label for="productPhoto">Foto do produto</label><label class="upload-box" for="productPhoto"><span class="upload-plus">+</span><span class="upload-text">Adicionar imagem</span><input id="productPhoto" name="photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><button type="submit" class="btn p w" style="margin-top:14px">Cadastrar produto</button></form><div class="admin-section-title" style="margin-top:20px">Produtos cadastrados <span>'+products.length+'</span></div>'+productRows+'</div>'+
- '<div class="admin-panel"><div class="admin-section-title">'+ic("tag")+' Criar promoção</div><form id="promotionForm"><label for="promotionTitle">Nome da promoção *</label><input id="promotionTitle" name="title" required maxlength="140" placeholder="Ex.: Festival de ofertas"><label for="promotionDescription">Descrição</label><textarea id="promotionDescription" name="description" rows="2" style="width:100%;border:1px solid var(--bd);border-radius:10px;padding:10px;font:inherit;font-size:14px;resize:vertical" placeholder="Detalhes da promoção"></textarea><div class="admin-inline"><div><label for="promotionFrom">Começa em *</label><input id="promotionFrom" name="valid_from" type="date" value="'+TODAY+'" min="'+TODAY+'" required></div><div><label for="promotionUntil">Termina em *</label><input id="promotionUntil" name="valid_until" type="date" value="'+TODAY+'" min="'+TODAY+'" required></div></div><label for="promotionPhoto">Imagem da promoção (opcional)</label><label class="upload-box" for="promotionPhoto"><span class="upload-plus">+</span><span class="upload-text">Adicionar imagem</span><input id="promotionPhoto" name="photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><label>Produtos participantes *</label><div class="admin-picks">'+productPicks+'</div><button type="submit" class="btn p w" style="margin-top:14px"'+(products.length?'':' disabled')+'>Criar promoção</button></form><div class="admin-section-title" style="margin-top:20px">Promoções do mercado <span>'+promos.length+'</span></div>'+promoRows+'</div>'+
+ '<div class="admin-panel"><div class="admin-section-title">'+ic("tag")+' Importar tabela de preços com IA</div><div class="price-import-help">Envie uma foto nítida da tabela. A IA tenta reconhecer produtos, marcas, tamanhos e preços. Depois você confere a leitura antes de cadastrar. JPG, PNG ou WebP de até 6 MB.</div><label class="upload-box price-import-file" for="priceTableImage"><span class="upload-plus">+</span><span class="upload-text">Adicionar foto da tabela de preços</span><input id="priceTableImage" type="file" accept="image/jpeg,image/png,image/webp"></label><div id="priceTableFileName" class="price-import-file-name">Nenhuma imagem selecionada</div><button id="analyzePriceTableBtn" type="button" class="btn p w" data-a="analyzePriceTable">Ler tabela com IA</button><div class="price-import-status">Os preços só serão gravados depois que você revisar e tocar em “Conferi tudo — salvar no Supabase”. A IA pode errar números em fotos desfocadas.</div>'+priceImportReview()+'</div>'+ '<div class="admin-panel"><div class="admin-section-title">'+ic("tag")+' Criar promoção</div><form id="promotionForm"><label for="promotionTitle">Nome da promoção *</label><input id="promotionTitle" name="title" required maxlength="140" placeholder="Ex.: Festival de ofertas"><label for="promotionDescription">Descrição</label><textarea id="promotionDescription" name="description" rows="2" style="width:100%;border:1px solid var(--bd);border-radius:10px;padding:10px;font:inherit;font-size:14px;resize:vertical" placeholder="Detalhes da promoção"></textarea><div class="admin-inline"><div><label for="promotionFrom">Começa em *</label><input id="promotionFrom" name="valid_from" type="date" value="'+TODAY+'" min="'+TODAY+'" required></div><div><label for="promotionUntil">Termina em *</label><input id="promotionUntil" name="valid_until" type="date" value="'+TODAY+'" min="'+TODAY+'" required></div></div><label for="promotionPhoto">Imagem da promoção (opcional)</label><label class="upload-box" for="promotionPhoto"><span class="upload-plus">+</span><span class="upload-text">Adicionar imagem</span><input id="promotionPhoto" name="photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label><label>Produtos participantes *</label><div class="admin-picks">'+productPicks+'</div><button type="submit" class="btn p w" style="margin-top:14px"'+(products.length?'':' disabled')+'>Criar promoção</button></form><div class="admin-section-title" style="margin-top:20px">Promoções do mercado <span>'+promos.length+'</span></div>'+promoRows+'</div>'+
  '<div class="box"><div class="sub">As alterações ficam salvas no Supabase e as informações públicas do mercado, produtos e promoções podem aparecer para os usuários do Preço Certo.</div><button class="btn s w" style="margin-top:12px" data-a="logout">Sair da conta</button></div>';
 }
 
@@ -454,10 +547,26 @@ else if(a==="adminToggle"){S.adminMode=S.adminMode==="signup"?"login":"signup";R
 else if(a==="google"){if(!supabaseClient){toast("O login está temporariamente indisponível. Tente novamente.");return}b.disabled=true;var oldGoogleText=b.innerHTML;b.textContent="Conectando ao Google...";supabaseClient.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.href.split("#")[0]}}).then(function(r){if(r.error){toast(r.error.message||"Não foi possível entrar com o Google");b.disabled=false;b.innerHTML=oldGoogleText}}).catch(function(err){toast(err.message||"Erro ao conectar com o Google");b.disabled=false;b.innerHTML=oldGoogleText})}
 else if(a==="home"){S.view="home";R();scrollTo(0,0)}
 else if(a==="prof"){S.view="prof";if(isMarketAdminUser()&&!S.adminMarket)loadAdminProfile().then(function(){R()});R()}
+else if(a==="analyzePriceTable"){await analyzePriceTable(b)}
+else if(a==="savePriceRows"){await savePriceImportRows(b)}
+else if(a==="clearPriceRows"){S.priceImportRows=[];R();toast("Leitura descartada.")}
 else if(a==="adminRefresh"){b.disabled=true;await loadAdminProfile();await loadRemoteData();R();if(S.adminError)toast(S.adminError);else toast("Perfil do mercado atualizado");}
 else if(a==="deleteProduct"){if(!S.adminAccess||!S.adminMarket){toast("Entre como administrador do mercado.");return}if(!confirm("Excluir este produto? Se ele estiver em uma promoção, também será removido dela."))return;try{var dr=await supabaseClient.from("offers").delete().eq("id",i).eq("m",String(S.adminMarket.id));if(dr.error)throw dr.error;toast("Produto excluído.");await loadRemoteData();await loadAdminProfile();R()}catch(err){console.error(err);toast(err.message||"Não foi possível excluir o produto.")}}
 else if(a==="deletePromotion"){if(!S.adminAccess||!S.adminMarket){toast("Entre como administrador do mercado.");return}if(!confirm("Excluir esta promoção?"))return;try{var prd=await supabaseClient.from("promotions").delete().eq("id",i).eq("market_id",String(S.adminMarket.id));if(prd.error)throw prd.error;toast("Promoção excluída.");await loadRemoteData();await loadAdminProfile();R()}catch(err){console.error(err);toast(err.message||"Não foi possível excluir a promoção.")}}
 else if(a==="logout"){if(supabaseClient)supabaseClient.auth.signOut().then(function(r){if(r.error)toast("Não foi possível sair");else{S.user=null;S.view="prof";toast("Você saiu da conta");R()}});else{S.user=null;S.view="prof";R()}}
+});
+document.addEventListener("change",function(e){
+ var input=e.target;
+ if(input&&input.id==="priceTableImage"){
+  var label=$("priceTableFileName");
+  if(label)label.textContent=input.files&&input.files[0]?input.files[0].name:"Nenhuma imagem selecionada";
+ }
+ var field=input&&input.getAttribute("data-price-import-field"),index=Number(input&&input.getAttribute("data-price-import-row"));
+ if(field&&Number.isInteger(index)&&S.priceImportRows[index]){
+  var value=input.value;
+  if(field==="price"||field==="old_price")value=value===""?"":Number(value);
+  S.priceImportRows[index][field]=value;
+ }
 });
 document.addEventListener("submit",async function(e){
  var form=e.target;
