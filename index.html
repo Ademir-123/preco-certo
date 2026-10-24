@@ -28,6 +28,25 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px
 .search{margin-top:14px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--bd);border-radius:16px;padding:0 16px;height:52px;box-shadow:0 1px 3px #0001}
 .search svg{font-size:23px;color:var(--mut)}
 .search input{flex:1;border:0;outline:0;background:none;font:inherit;font-size:15px;min-width:0}
+
+.search-section{margin-top:16px}
+.search-section .sec{margin-top:18px}
+.search-results-count{font-size:12px;color:var(--mut);font-weight:600}
+.market-results{display:grid;gap:9px}
+.market-result{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid var(--bd);border-radius:14px;padding:12px;box-shadow:0 1px 4px #0000000d}
+.market-result-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--gl);border-radius:12px;color:var(--g);font-size:22px}
+.market-result-main{flex:1;min-width:0}
+.market-result-main strong{display:block;font-size:14px;line-height:1.3}
+.market-result-main span{display:block;font-size:12px;color:var(--mut);margin-top:3px;line-height:1.4;overflow-wrap:anywhere}
+.market-result-action{font-size:11px;font-weight:700;color:var(--g);white-space:nowrap}
+.search-category-results{display:flex;flex-wrap:wrap;gap:8px}
+.search-category-result{border:1px solid #b8ddc2;background:#f2fbf4;color:#176534;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700}
+.search-promo-result{display:block;width:100%;text-align:left;border:1px solid var(--bd);background:#fff;border-radius:14px;padding:12px;margin-bottom:8px}
+.search-promo-result strong{display:block;font-size:14px}
+.search-promo-result span{display:block;color:var(--mut);font-size:12px;margin-top:4px;line-height:1.4}
+.market-filter-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding:11px 12px;border-radius:12px;background:var(--gl);color:#176534;font-size:12px}
+.market-filter-strip span{min-width:0}
+.market-filter-strip button{flex:none;border:0;background:transparent;color:var(--g);font-weight:700;font-size:12px}
 .cats{display:flex;gap:10px;overflow-x:auto;margin:16px -16px 0;padding:0 16px 4px;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
 .cat{flex:none;width:68px;height:78px;border-radius:16px;border:1px solid var(--bd);background:var(--chip);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:600}
@@ -169,11 +188,11 @@ var iso=function(d){var x=new Date();x.setDate(x.getDate()+d);return x.toISOStri
 var TODAY=iso(0);
 var seed={markets:[{id:"A",n:"Mercado A",la:-17.810,lo:-50.599},{id:"B",n:"Mercado B",la:-17.820,lo:-50.605},{id:"C",n:"Mercado C",la:-17.805,lo:-50.585},{id:"D",n:"Mercado D",la:-17.830,lo:-50.580}],
 offers:[["Arroz Branco Prato Fino","5kg • Tipo 1","A",24.9,27.9,3,"alimentos"],["Banana Prata","Kg","B",4.99,6.99,4,"hortifruti"],["Coxa e Sobrecoxa de Frango","Kg","C",8.9,11.9,3,"carnes"],["Extrato de Tomate Quero","340g","A",2.99,4.49,2,"alimentos"],["Óleo de Soja Liza","900ml","D",6.49,8.9,4,"alimentos"],["Arroz Branco Prato Fino","5kg • Tipo 1","C",25.5,0,0,"alimentos"],["Arroz Branco Prato Fino","5kg • Tipo 1","B",26.9,28.5,5,"alimentos"],["Banana Prata","Kg","A",5.49,0,0,"hortifruti"],["Óleo de Soja Liza","900ml","A",7.2,0,0,"alimentos"],["Extrato de Tomate Quero","340g","D",3.19,0,0,"alimentos"]]};
-var S={markets:seed.markets,offers:seed.offers.map(function(o,i){return{id:"s"+i,n:o[0],s:o[1],m:o[2],p:o[3],o:o[4]||0,v:o[5]?iso(o[5]):"",c:o[6]}}),promotions:[],activePromotion:null,list:{},favs:[],view:"login",cat:"todos",q:"",compareQ:"",loc:null,city:"Santa Helena de Goiás",adminMarket:null,adminProducts:[],adminPromotions:[],adminAccess:false,adminPending:false,adminRejected:false,adminApplication:null,adminLoading:false,adminError:""};
+var S={markets:seed.markets,offers:seed.offers.map(function(o,i){return{id:"s"+i,n:o[0],s:o[1],m:o[2],p:o[3],o:o[4]||0,v:o[5]?iso(o[5]):"",c:o[6]}}),promotions:[],activePromotion:null,list:{},favs:[],view:"login",cat:"todos",q:"",compareQ:"",marketFilter:null,loc:null,city:"Santa Helena de Goiás",adminMarket:null,adminProducts:[],adminPromotions:[],adminAccess:false,adminPending:false,adminRejected:false,adminApplication:null,adminLoading:false,adminError:""};
 try{var sv=JSON.parse(localStorage.getItem(K)||"null");if(sv){["markets","offers","list","favs"].forEach(function(k){if(sv[k])S[k]=sv[k]})}}catch(e){}
 function save(){try{localStorage.setItem(K,JSON.stringify({markets:S.markets,offers:S.offers,list:S.list,favs:S.favs}))}catch(e){}}
 // Quando configurado, o Supabase é a fonte principal. Se o banco ainda estiver vazio, preserva o catálogo de demonstração/cache local.
-async function loadRemoteData(){if(!initSupabase())return;try{var results=await Promise.all([supabaseClient.from("markets").select("id,n,la,lo,address,phone,photo_url,owner_name,description,created_at,updated_at"),supabaseClient.from("offers").select("*")]);if(results[0].error)throw results[0].error;if(results[1].error)throw results[1].error;var markets=results[0].data||[],offers=results[1].data||[];if(markets.length||offers.length){if(markets.length)S.markets=markets.map(function(m){return{id:String(m.id),n:m.n||m.name||m.nome||"Mercado",la:m.la??m.latitude??null,lo:m.lo??m.longitude??null}});S.offers=offers.map(function(o){return{id:String(o.id),n:o.n||o.name||o.nome||o.product_name||"Produto",s:o.s||o.size||o.peso||o.volume||"",m:String(o.m??o.market_id??o.market??""),p:Number(o.p??o.price??o.preco??0),o:Number(o.o??o.old_price??o.preco_anterior??0),v:o.v||o.valid_until||o.validade||"",c:o.c||o.category||o.categoria||"alimentos",img:o.img||o.image_url||o.image||o.imagem_url||""}});remoteReady=true;}
+async function loadRemoteData(){if(!initSupabase())return;try{var results=await Promise.all([supabaseClient.from("markets").select("id,n,la,lo,address,phone,photo_url,owner_name,description,created_at,updated_at"),supabaseClient.from("offers").select("*")]);if(results[0].error)throw results[0].error;if(results[1].error)throw results[1].error;var markets=results[0].data||[],offers=results[1].data||[];if(markets.length||offers.length){if(markets.length)S.markets=markets.map(function(m){return{id:String(m.id),n:m.n||m.name||m.nome||m.market_name||"Mercado",la:m.la??m.latitude??null,lo:m.lo??m.longitude??null,address:m.address||m.endereco||"",phone:m.phone||m.telefone||"",description:m.description||m.descricao||"",owner_name:m.owner_name||m.responsavel||"",photo_url:m.photo_url||m.image_url||"",city:m.city||m.cidade||""}});S.offers=offers.map(function(o){return{id:String(o.id),n:o.n||o.name||o.nome||o.product_name||"Produto",s:o.s||o.size||o.peso||o.volume||"",m:String(o.m??o.market_id??o.market??""),p:Number(o.p??o.price??o.preco??0),o:Number(o.o??o.old_price??o.preco_anterior??0),v:o.v||o.valid_until||o.validade||"",c:o.c||o.category||o.categoria||"alimentos",img:o.img||o.image_url||o.image||o.imagem_url||""}});remoteReady=true;}
  // Promoções com nome próprio são lidas das tabelas promotions e promotion_items. Se ainda não existirem, agrupamos ofertas com desconto para preservar compatibilidade.
  try{var pr=await supabaseClient.from("promotions").select("*");if(!pr.error&&(pr.data||[]).length){var pi=await supabaseClient.from("promotion_items").select("*");if(pi.error)throw pi.error;var items=pi.data||[];S.promotions=pr.data.map(function(x){return{id:String(x.id),title:x.title||x.name||x.n||"Promoção",marketId:String(x.market_id??x.market??""),validFrom:x.valid_from||x.starts_at||TODAY,validUntil:x.valid_until||x.ends_at||"",description:x.description||x.descricao||"",imageUrl:x.image_url||x.image||"",offerIds:items.filter(function(it){return String(it.promotion_id)===String(x.id)}).sort(function(a,b){return Number(a.position||0)-Number(b.position||0)}).map(function(it){return String(it.offer_id)})}})}else{S.promotions=buildPromotionsFromOffers()}}catch(promoErr){console.warn("As tabelas de promoções ainda não estão disponíveis; mostrando ofertas agrupadas por mercado.",promoErr);S.promotions=buildPromotionsFromOffers()}
  try{localStorage.setItem(K,JSON.stringify({markets:S.markets,offers:S.offers,list:S.list,favs:S.favs}))}catch(e){}R()}catch(err){console.error("Falha ao carregar dados do Supabase:",err);}}
@@ -181,6 +200,44 @@ var f=function(x){return"R$ "+Number(x).toFixed(2).replace(".",",")};
 var fd=function(s){return s?String(s).slice(0,10).split("-").reverse().join("/"):"—"};
 var key=function(o){return(o.n+"|"+o.s).toLowerCase()};
 var mk=function(id){return S.markets.filter(function(m){return m.id===id})[0]||{n:"?"}};
+var CAT_TERMS={
+ hortifruti:["hortifruti","horti fruti","frutas","verduras","legumes","vegetais","feira","produce","fruta","legume","vegetal"],
+ bebidas:["bebida","bebidas","refrigerante","refrigerantes","suco","sucos","agua","aguas","drink","drinks"],
+ alimentos:["alimento","alimentos","mercearia","mantimentos","arroz","feijao","macarrao","farinha","enlatados","graos","comida","food","grocery","groceries"],
+ limpeza:["limpeza","produtos de limpeza","detergente","desinfetante","sabao","agua sanitaria","amaciante","limpador"],
+ higiene:["higiene","higiene pessoal","perfumaria","shampoo","sabonete","desodorante","creme dental","pasta de dente"],
+ carnes:["carne","carnes","frango","boi","bovina","bovinas","aves","peixe","pescado","pescados","proteina animal"]
+};
+function normalizeSearch(value){return String(value==null?"":value).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()}
+function categoryBucket(raw){
+ var n=normalizeSearch(raw);if(!n)return "";
+ if(CAT_TERMS[n])return n;
+ var ids=Object.keys(CAT_TERMS);
+ for(var i=0;i<ids.length;i++){var terms=CAT_TERMS[ids[i]];for(var j=0;j<terms.length;j++){var t=normalizeSearch(terms[j]);if(n===t||(" "+n+" ").indexOf(" "+t+" ")>-1)return ids[i]}}
+ return n;
+}
+function categorySearchText(raw){
+ var bucket=categoryBucket(raw),label=CATS.filter(function(c){return c[0]===bucket})[0];
+ return [raw,label?label[1]:"",CAT_TERMS[bucket]||[]].join(" ");
+}
+function searchWordsMatch(text,query){
+ var q=normalizeSearch(query);if(!q)return true;
+ var hay=normalizeSearch(text);return q.split(" ").filter(Boolean).every(function(word){return hay.indexOf(word)>-1});
+}
+function offerMatchesCategory(o,cat){
+ if(!cat||cat==="todos")return true;
+ var bucket=categoryBucket(o.c);return bucket===cat||normalizeSearch(o.c)===normalizeSearch(cat);
+}
+function offerSearchText(o){
+ var m=mk(o.m)||{};
+ return [o.n,o.s,o.c,categorySearchText(o.c),m.n,m.address,m.description,m.city,m.phone].join(" ");
+}
+function marketSearchText(m){
+ var own=[m.n,m.name,m.nome,m.market_name,m.address,m.endereco,m.description,m.descricao,m.phone,m.telefone,m.owner_name,m.responsavel,m.city,m.cidade].join(" ");
+ var catalog=S.offers.filter(function(o){return String(o.m)===String(m.id)}).map(function(o){return [o.n,o.s,categorySearchText(o.c)].join(" ")}).join(" ");
+ return own+" "+catalog;
+}
+
 function dist(m){if(!S.loc||m.la==null)return null;var r=Math.PI/180,a=(m.la-S.loc.la)*r,b=(m.lo-S.loc.lo)*r,h=Math.sin(a/2)*Math.sin(a/2)+Math.cos(S.loc.la*r)*Math.cos(m.la*r)*Math.sin(b/2)*Math.sin(b/2);return 12742*Math.asin(Math.sqrt(h))}
 var fk=function(d){return d==null?"":d.toFixed(1).replace(".",",")+" km"};
 var promo=function(o){return o.o&&o.v&&String(o.v).slice(0,10)>=TODAY};
@@ -200,13 +257,38 @@ function locSheet(){sheet('<h2>Sua localização</h2><button class="btn p w" dat
 function card(o){var m=mk(o.m),d=fk(dist(m)),pm=promo(o),fv=S.favs.indexOf(key(o))>-1;
 return'<div class="card"><div class="img">'+(o.img?'<img src="'+o.img+'" alt="'+o.n+'">':EM[o.c])+'<button class="heart'+(fv?" on":"")+'" data-a="fav" data-i="'+o.id+'" aria-label="Favoritar">'+ic("heart")+'</button></div><div class="info"><h3>'+o.n+'</h3><div class="sub">'+o.s+'</div><div class="mk"><span>'+ic("store")+m.n+'</span>'+(d?'<span class="d">'+ic("pin")+d+'</span>':"")+'</div><div class="pr"><b>'+f(o.p)+'</b>'+(pm?'<s>'+f(o.o)+'</s>':"")+'</div>'+(pm?'<span class="val">'+ic("clock",' width="12" height="12"')+'Oferta válida até '+fd(o.v)+'</span>':"")+'</div><div class="btns"><button class="btn p" data-a="add" data-i="'+o.id+'">'+ic("plus")+' Adicionar à lista</button><button class="btn s" data-a="cmp" data-i="'+o.id+'">'+ic("cmp")+' Comparar preços</button></div></div>'}
 var byId=function(i){return S.offers.filter(function(o){return o.id===i})[0]};
-function head(){return'<header><div class="brand"><img class="brand-logo" src="'+LOGO_SRC+'" alt="Preço Certo"></div><div class="tools"><button class="loc" data-a="loc">'+ic("pin",' class="p"')+'<span>'+S.city+'</span>'+ic("home").replace(IC.home,"M6 9l6 6 6-6")+'</button><button class="bell" data-a="bell" aria-label="Notificações">'+ic("user").replace(IC.user,"M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 0 0 4 0")+'<i></i></button></div></header>'} function vHome(){var q=S.q.toLowerCase().trim();
-var r=S.offers.filter(function(o){return(S.cat==="todos"||o.c===S.cat)&&(!q||(o.n+o.s+o.c+mk(o.m).n).toLowerCase().indexOf(q)>-1)});
-r.sort(function(a,b){return(promo(b)?1:0)-(promo(a)?1:0)});
-return head()+'<label class="search">'+ic("search")+'<input id="q" value="'+S.q.replace(/"/g,"")+'" placeholder="Buscar por produto, marca ou categoria..."></label><div class="cats">'+CATS.map(function(c){return'<button class="cat'+(c[0]===S.cat?" on":"")+'" data-a="cat" data-i="'+c[0]+'"><svg viewBox="0 0 24 24"><path d="'+c[2]+'"/></svg>'+c[1]+"</button>"}).join("")+'</div><div class="sec"><h2> Ofertas em destaque</h2><button class="link" data-a="all">Ver todas ›</button></div>'+(r.length?r.map(card).join(""):'<div class="empty">Nenhum produto encontrado.</div>')}
+function head(){return'<header><div class="brand"><img class="brand-logo" src="'+LOGO_SRC+'" alt="Preço Certo"></div><div class="tools"><button class="loc" data-a="loc">'+ic("pin",' class="p"')+'<span>'+S.city+'</span>'+ic("home").replace(IC.home,"M6 9l6 6 6-6")+'</button><button class="bell" data-a="bell" aria-label="Notificações">'+ic("user").replace(IC.user,"M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 0 0 4 0")+'<i></i></button></div></header>'} function vHome(){
+ var q=String(S.q||"").trim(),hasQuery=!!normalizeSearch(q);
+ var r=S.offers.filter(function(o){
+  return offerMatchesCategory(o,S.cat)&&(!S.marketFilter||String(o.m)===String(S.marketFilter))&&(!hasQuery||searchWordsMatch(offerSearchText(o),q));
+ });
+ r.sort(function(a,b){return(promo(b)?1:0)-(promo(a)?1:0)||a.n.localeCompare(b.n,"pt-BR")});
+ var matchedCategories=hasQuery?CATS.filter(function(c){return c[0]!=="todos"&&searchWordsMatch(categorySearchText(c[0]),q)}):[];
+ var matchedMarkets=hasQuery?S.markets.filter(function(m){return searchWordsMatch(marketSearchText(m),q)}):[];
+ var matchedPromotions=hasQuery?S.promotions.filter(function(p){
+  var linked=(p.offerIds||[]).map(function(id){return byId(String(id))}).filter(Boolean).map(offerSearchText).join(" ");
+  return searchWordsMatch([p.title,p.description,mk(p.marketId).n,linked].join(" "),q);
+ }).filter(promoIsActive):[];
+ var safeQ=escapeHTML(S.q);
+ var categorySection=matchedCategories.length?'<div class="search-section"><div class="sec"><h2>Categorias encontradas</h2><span class="search-results-count">'+matchedCategories.length+'</span></div><div class="search-category-results">'+matchedCategories.map(function(c){return'<button type="button" class="search-category-result" data-a="cat" data-i="'+escapeHTML(c[0])+'">'+escapeHTML(c[1])+'</button>'}).join("")+'</div></div>':"";
+ var marketSection=matchedMarkets.length?'<div class="search-section"><div class="sec"><h2>'+ic("store")+' Mercados encontrados</h2><span class="search-results-count">'+matchedMarkets.length+'</span></div><div class="market-results">'+matchedMarkets.map(function(m){
+  var count=S.offers.filter(function(o){return String(o.m)===String(m.id)}).length;
+  var address=m.address||m.city||m.description||"Veja os produtos cadastrados neste mercado";
+  return'<button type="button" class="market-result" data-a="market-search" data-i="'+escapeHTML(m.id)+'"><span class="market-result-icon">'+ic("store")+'</span><span class="market-result-main"><strong>'+escapeHTML(m.n||m.name||"Mercado")+'</strong><span>'+escapeHTML(address)+'</span></span><span class="market-result-action">Ver produtos ›<br><span style="font-weight:500;color:var(--mut)">'+count+' produto'+(count===1?"":"s")+'</span></span></button>'
+ }).join("")+'</div></div>':"";
+ var promoSection=matchedPromotions.length?'<div class="search-section"><div class="sec"><h2>'+ic("tag")+' Promoções encontradas</h2><span class="search-results-count">'+matchedPromotions.length+'</span></div>'+matchedPromotions.map(function(p){return'<button type="button" class="search-promo-result" data-a="promo-open" data-i="'+escapeHTML(p.id)+'"><strong>'+escapeHTML(p.title||"Promoção")+'</strong><span>'+escapeHTML(mk(p.marketId).n||"Mercado participante")+(p.validUntil?" · Válida até "+fd(p.validUntil):"")+'</span></button>'}).join("")+'</div>':"";
+ var marketFilter="";
+ if(S.marketFilter){
+  var selectedMarket=mk(String(S.marketFilter));
+  marketFilter='<div class="market-filter-strip"><span>Mostrando produtos de <strong>'+escapeHTML(selectedMarket.n||"Mercado")+'</strong></span><button type="button" data-a="market-clear">Limpar filtro</button></div>';
+ }
+ var allSearchCount=matchedCategories.length+matchedMarkets.length+matchedPromotions.length+r.length;
+ var empty=hasQuery&&allSearchCount===0?'<div class="empty">Não encontramos produtos, mercados, categorias ou promoções para “'+safeQ+'”. Tente outro nome, marca, endereço ou categoria.</div>':"";
+ return head()+'<label class="search">'+ic("search")+'<input id="q" value="'+safeQ+'" placeholder="Buscar produtos, mercados ou categorias..." autocomplete="off" aria-label="Buscar produtos, mercados, categorias e promoções"></label><div class="cats">'+CATS.map(function(c){return'<button class="cat'+(c[0]===S.cat?" on":"")+'" data-a="cat" data-i="'+c[0]+'"><svg viewBox="0 0 24 24"><path d="'+c[2]+'"/></svg>'+c[1]+"</button>"}).join("")+'</div>'+marketFilter+(hasQuery?categorySection+marketSection+promoSection:"")+(empty?"":'<div class="sec"><h2>'+(hasQuery?"Produtos encontrados":"Ofertas em destaque")+'</h2><span class="search-results-count">'+r.length+' produto'+(r.length===1?"":"s")+'</span></div>'+(r.length?r.map(card).join(""):'<div class="empty">'+(hasQuery?"Nenhum produto corresponde a essa busca.":"Nenhum produto disponível no momento.")+'</div>'));
+}
 function vCompare(){
  var q=(S.compareQ||"").toLowerCase().trim(),groups={};
- S.offers.forEach(function(o){var k=key(o);if(q&&(o.n+" "+o.s+" "+o.c+" "+mk(o.m).n).toLowerCase().indexOf(q)<0)return;if(!groups[k])groups[k]=[];groups[k].push(o)});
+ S.offers.forEach(function(o){var k=key(o);if(q&&!searchWordsMatch(offerSearchText(o),q))return;if(!groups[k])groups[k]=[];groups[k].push(o)});
  var products=Object.keys(groups).map(function(k){var offers=groups[k].slice().sort(function(a,b){return Number(a.p)-Number(b.p)}),best=offers[0],worst=offers[offers.length-1],markets={};offers.forEach(function(o){markets[String(o.m)]=true});return{key:k,offers:offers,best:best,worst:worst,count:Object.keys(markets).length,saving:Math.max(0,Number(worst.p)-Number(best.p))}});
  products.sort(function(a,b){return b.saving-a.saving||a.best.n.localeCompare(b.best.n,"pt-BR")});
  var safeQ=(S.compareQ||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -333,7 +415,7 @@ function R(){var Y=window.scrollY,c0=document.querySelector(".cats"),CX=c0?c0.sc
 $("app").innerHTML=v==="home"?h:h;
 var n=Object.keys(S.list).length,vs={home:"home",promos:"tag",promoDetail:"tag",list:"list",compare:"cmp",fav:"heart",prof:"user"};
 $("nav").style.display=(v==="login"||v==="adminAuth")?"none":"";$("nav").innerHTML=NAV.map(function(x,i){var t=["home","promos","list","search","compare","fav","prof"][i];if(t==="search")return'<button class="mid" data-a="search" aria-label="Buscar">'+ic("search")+'</button>';var active=(t==="promos"&&(v==="promos"||v==="promoDetail"))||vs[v]===x[0];return'<button class="'+(active?"on":"")+'" data-a="nav" data-i="'+t+'">'+ic(x[0])+x[1]+(t==="list"&&n?'<em>'+n+'</em>':"")+'</button>'}).join("");
-var q=$("q");if(q)q.addEventListener("input",function(){S.q=q.value;var p=q.selectionStart;R();var q2=$("q");q2.focus({preventScroll:true});q2.setSelectionRange(p,p)});var cq=$("compareQ");if(cq)cq.addEventListener("input",function(){S.compareQ=cq.value;var p=cq.selectionStart;R();var cq2=$("compareQ");cq2.focus({preventScroll:true});cq2.setSelectionRange(p,p)});window.scrollTo(0,Y);var c2=document.querySelector(".cats");if(c2)c2.scrollLeft=CX}
+var q=$("q");if(q)q.addEventListener("input",function(){S.q=q.value;S.marketFilter=null;var p=q.selectionStart;R();var q2=$("q");if(q2){q2.focus({preventScroll:true});q2.setSelectionRange(p,p)}});var cq=$("compareQ");if(cq)cq.addEventListener("input",function(){S.compareQ=cq.value;var p=cq.selectionStart;R();var cq2=$("compareQ");cq2.focus({preventScroll:true});cq2.setSelectionRange(p,p)});window.scrollTo(0,Y);var c2=document.querySelector(".cats");if(c2)c2.scrollLeft=CX}
 function cmp(o,sort){var k=key(o),r=S.offers.filter(function(x){return key(x)===k});
 r.sort(sort==="d"?function(a,b){var da=dist(mk(a.m)),db=dist(mk(b.m));return(da==null?1e9:da)-(db==null?1e9:db)}:function(a,b){return a.p-b.p});
 sheet('<h2>'+o.n+'</h2><div class="sub">'+o.s+' • '+r.length+' mercado(s)</div><div class="chips"><button class="chip'+(sort!=="d"?" on":"")+'" data-a="srt" data-i="'+o.id+'" data-s="p">Menor preço</button><button class="chip'+(sort==="d"?" on":"")+'" data-a="srt" data-i="'+o.id+'" data-s="d">Distância</button></div>'+r.map(function(x,i){var m=mk(x.m),d=fk(dist(m));return'<div class="row"><div><b>'+m.n+'</b><div class="sub">'+(d||"Distância indisponível")+(promo(x)?' • promoção até '+fd(x.v):"")+'</div></div><div style="text-align:right"><b style="color:var(--g);font-size:16px">'+f(x.p)+'</b>'+(promo(x)?'<div class="sub"><s>'+f(x.o)+'</s></div>':"")+(i===0&&sort!=="d"?'<div><span class="tag">Menor preço</span></div>':"")+'</div></div>'}).join("")+(S.loc?"":'<div class="note">Ative sua localização para ver as distâncias.</div>')+'<button class="btn p w" style="margin-top:10px" data-a="add" data-i="'+o.id+'">'+ic("plus")+' Adicionar à lista</button>')}
@@ -342,8 +424,10 @@ document.addEventListener("click",async function(e){if(e.target.id==="ov"){close
 var b=e.target.closest("[data-a]");if(!b)return;var a=b.dataset.a,i=b.dataset.i,o=i&&byId(i),p=i&&S.promotions.filter(function(x){return String(x.id)===String(i)})[0];
 if(a==="nav"){S.view=i;R();scrollTo(0,0)}
 else if(a==="search"){S.view="home";R();$("q").focus()}
+else if(a==="market-search"){S.view="home";S.marketFilter=String(i);S.cat="todos";S.q="";R();scrollTo(0,0)}
+else if(a==="market-clear"){S.marketFilter=null;R()}
 else if(a==="cat"){S.cat=i;R()}
-else if(a==="all"){S.cat="todos";S.q="";R()}
+else if(a==="all"){S.cat="todos";S.q="";S.marketFilter=null;R()}
  else if(a==="promo-open"&&p){S.activePromotion=p.id;S.view="promoDetail";R();scrollTo(0,0)}
  else if(a==="promo-back"){S.view="promos";S.activePromotion=null;R();scrollTo(0,0)}
 else if(a==="bell"){var n=S.offers.filter(function(x){return promo(x)&&x.v<=iso(2)}).length;toast(n?n+" oferta(s) terminando em até 2 dias":"Sem novas notificações");b.querySelector("i").style.display="none"}
