@@ -63,14 +63,14 @@ A aprovação é manual pelo SQL Editor. Para a equipe aprovar solicitações po
 
 ## Importar tabela de preços com IA
 
-O perfil do mercado tem um importador que recebe uma foto JPG, PNG ou WebP, extrai os produtos e preços usando visão da OpenAI e mostra uma prévia editável. **Os dados só entram em `public.offers` depois que o administrador confere a prévia e confirma.** Produtos do mesmo mercado com nome e tamanho correspondentes são atualizados; os demais são inseridos.
+O perfil do mercado tem um importador que recebe uma foto JPG, PNG ou WebP, extrai os produtos e preços usando a API Gemini e mostra uma prévia editável. **Os dados só entram em `public.offers` depois que o administrador confere a prévia e confirma.** Produtos do mesmo mercado com nome e tamanho correspondentes são atualizados; os demais são inseridos.
 
-### Configurar a chave da IA (uma vez)
+### Configurar a chave do Gemini (uma vez)
 
-1. Crie uma chave de API na plataforma da OpenAI: https://platform.openai.com/api-keys. O uso da API é cobrado separadamente da assinatura do ChatGPT; confira o preço e configure limites na conta da API.
+1. Abra o [Google AI Studio](https://aistudio.google.com/apikey) e crie uma chave da API Gemini.
 2. No Supabase Dashboard do projeto Preço Certo, abra **Edge Functions → Secrets** (ou **Project Settings → Edge Functions → Secrets**, conforme a interface).
-3. Adicione o segredo com o nome exato `OPENAI_API_KEY` e o valor da chave de API da OpenAI. Salve. **Não cole essa chave no HTML, no GitHub ou em mensagens.**
-4. A função `read-price-table` foi implantada com verificação de JWT ativada. Ela confirma a sessão e exige vínculo aprovado do usuário com o mercado antes de chamar a IA. Não usa `service_role` no navegador.
+3. Adicione o segredo com o nome exato `GEMINI_API_KEY` e o valor da chave do Google AI Studio. Salve. **Não cole essa chave no HTML, no GitHub ou em mensagens.**
+4. A função `read-price-table` está implantada com verificação de JWT ativada. Ela confirma a sessão e exige vínculo aprovado do usuário com o mercado antes de chamar a IA. Não usa `service_role` no navegador.
 5. Entre no perfil do mercado no app, envie uma foto legível de até 6 MB e toque em **Ler tabela com IA**. Revise nomes, tamanhos, categorias e preços; depois toque em **Conferi tudo — salvar no Supabase**.
 
-A primeira tentativa só funcionará quando `OPENAI_API_KEY` estiver configurada e a conta da API tiver acesso/saldo. A IA pode errar em fotos desfocadas, com reflexos, tabela inclinada ou números pequenos. Confirme cada preço antes de salvar.
+O modelo configurado é `gemini-3.5-flash-lite`. O Google lista uma faixa gratuita para entrada e saída, sujeita a limites/cotas; no nível sem custo, o conteúdo pode ser usado para melhorar os produtos do Google. Consulte os [preços e condições atuais](https://ai.google.dev/gemini-api/docs/pricing?hl=pt-br) antes de usar tabelas com informações comerciais sensíveis. A IA pode errar em fotos desfocadas, com reflexos, tabela inclinada ou números pequenos. Confirme cada preço antes de salvar.
