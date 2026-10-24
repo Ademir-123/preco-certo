@@ -16,7 +16,6 @@ function getPublishableKey(): string | null {
     Deno.env.get("SUPABASE_ANON_KEY") ??
     Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
   if (direct) return direct;
-
   const keysJson = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
   if (!keysJson) return null;
   try {
@@ -58,7 +57,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "A configuração de autenticação do Supabase está incompleta." }, 500);
   }
 
-  // Confirm the access token against Supabase Auth. Do not trust metadata supplied by the client.
+  // Validate the user's session directly with Supabase Auth.
   let authResponse: Response;
   try {
     authResponse = await fetch(supabaseUrl + "/auth/v1/user", {
@@ -88,7 +87,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "O mercado selecionado é inválido." }, 400);
   }
 
-  // Check membership using the user's own JWT and RLS; no service-role key is used here.
+  // Check membership using the user's own JWT and RLS; never use the service-role key here.
   const membershipUrl = new URL(supabaseUrl + "/rest/v1/market_admins");
   membershipUrl.searchParams.set("user_id", "eq." + authUser.id);
   membershipUrl.searchParams.set("market_id", "eq." + marketId);
@@ -110,10 +109,10 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Somente administradores aprovados deste mercado podem ler uma tabela." }, 403);
   }
 
-  const openAiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openAiKey) {
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!geminiKey) {
     return jsonResponse({
-      error: "Falta configurar OPENAI_API_KEY nos segredos das Edge Functions do Supabase. A chave fica no servidor, nunca no HTML.",
+      error: "Falta configurar GEMINI_API_KEY nos segredos das Edge Functions do Supabase. A chave fica no servidor, nunca no HTML.",
       setup_required: true,
     }, 503);
   }
@@ -122,13 +121,13 @@ Deno.serve(async (req: Request) => {
   if (!match) {
     return jsonResponse({ error: "Use uma imagem JPG, PNG ou WebP válida." }, 400);
   }
-  if (match[2].length > 8_600_000) {
-    return jsonResponse({ error: "A imagem é muito grande. O limite é 6 MB." }, 413);
+  if (match[2].length > 2_600_000) {
+    return jsonResponse({ error: "A imagem preparada é muito grande. Tente uma foto menor." }, 413);
   }
 
   const prompt = [
     "Você é um assistente de entrada de preços para supermercados no Brasil.",
-    "Leia a imagem da tabela de preços e retorne somente os produtos cujas linhas e preços possam ser lidos com razoável segurança.",
+    "Leia a imagem da tabela de preços e retorne somente os produtos cujas linhas e preços estejam legíveis.",
     "Os preços usam reais brasileiros. Converta vírgula decimal para número JSON: '5,99' vira 5.99. Nunca invente dígitos nem complete preços ilegíveis.",
     "Não retorne títulos, datas, códigos de barras, subtotais, totais, números de telefone nem textos promocionais que não sejam produtos.",
     "Para cada produto, extraia nome, marca quando fizer parte do nome, tamanho/unidade, preço atual, preço anterior apenas se a tabela mostrar claramente um preço anterior/lista, categoria, validade se estiver escrita claramente e confiança.",
@@ -140,95 +139,95 @@ Deno.serve(async (req: Request) => {
     "Retorne o nome do mercado apenas se estiver claramente impresso no cabeçalho da tabela.",
   ].join(" ");
 
-  let aiResponse: Response;
-  try {
-    aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + openAiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        max_completion_tokens: 6000,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "price_table",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                market_name: { type: ["string", "null"] },
-                products: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    additionalProperties: false,
-                    properties: {
-                      name: { type: "string" },
-                      size: { type: "string" },
-                      price: { type: "number" },
-                      old_price: { type: ["number", "null"] },
-                      category: {
-                        type: "string",
-                        enum: ["alimentos", "hortifruti", "carnes", "bebidas", "limpeza", "higiene", "outros"],
-                      },
-                      valid_until: { type: ["string", "null"] },
-                      confidence: { type: "string", enum: ["alta", "media", "baixa"] },
-                    },
-                    required: ["name", "size", "price", "old_price", "category", "valid_until", "confidence"],
-                  },
-                },
-              },
-              required: ["market_name", "products"],
+  const schema = {
+    type: "OBJECT",
+    properties: {
+      market_name: { type: "STRING", nullable: true },
+      products: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            name: { type: "STRING" },
+            size: { type: "STRING" },
+            price: { type: "NUMBER" },
+            old_price: { type: "NUMBER", nullable: true },
+            category: {
+              type: "STRING",
+              enum: ["alimentos", "hortifruti", "carnes", "bebidas", "limpeza", "higiene", "outros"],
             },
+            valid_until: { type: "STRING", nullable: true },
+            confidence: { type: "STRING", enum: ["alta", "media", "baixa"] },
           },
+          required: ["name", "size", "price", "old_price", "category", "valid_until", "confidence"],
+          propertyOrdering: ["name", "size", "price", "old_price", "category", "valid_until", "confidence"],
         },
-        messages: [
-          {
-            role: "system",
-            content: "Extraia dados visíveis sem adivinhar. Siga exatamente o esquema JSON solicitado.",
-          },
-          {
+      },
+    },
+    required: ["market_name", "products"],
+    propertyOrdering: ["market_name", "products"],
+  };
+
+  let geminiResponse: Response;
+  try {
+    geminiResponse = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": geminiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
             role: "user",
-            content: [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: imageDataUrl, detail: "high" } },
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: "image/" + match[1], data: match[2] } },
             ],
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 6000,
+            responseMimeType: "application/json",
+            responseSchema: schema,
           },
-        ],
-      }),
-    });
+        }),
+      },
+    );
   } catch {
-    return jsonResponse({ error: "Não foi possível conectar ao serviço de leitura por IA." }, 502);
+    return jsonResponse({ error: "Não foi possível conectar ao serviço Gemini." }, 502);
   }
 
-  const aiBody = await aiResponse.json().catch(() => null);
-  if (!aiResponse.ok) {
-    const upstreamMessage =
-      typeof aiBody?.error?.message === "string" ? aiBody.error.message : "Erro no serviço de IA.";
-    console.error("OpenAI price-table request failed with status", aiResponse.status);
+  const geminiBody = await geminiResponse.json().catch(() => null);
+  if (!geminiResponse.ok) {
+    const upstreamMessage = typeof geminiBody?.error?.message === "string"
+      ? geminiBody.error.message
+      : "Erro no serviço Gemini.";
+    console.error("Gemini price-table request failed with status", geminiResponse.status);
     return jsonResponse({
-      error: aiResponse.status === 401
-        ? "A chave da OpenAI está inválida. Confira o segredo OPENAI_API_KEY no Supabase."
-        : aiResponse.status === 429
-        ? "A API da OpenAI está sem saldo disponível ou no limite de uso. Confira sua conta de API."
-        : "A IA não conseguiu processar a imagem. " + upstreamMessage,
-    }, aiResponse.status === 429 ? 429 : 502);
+      error: geminiResponse.status === 400
+        ? "O Gemini não aceitou a imagem ou o formato de saída. Tente outra foto."
+        : geminiResponse.status === 401 || geminiResponse.status === 403
+        ? "A chave GEMINI_API_KEY é inválida ou não tem acesso à API. Confira o segredo no Supabase."
+        : geminiResponse.status === 429
+        ? "O limite gratuito do Gemini foi atingido ou a conta precisa de mais cota. Tente mais tarde ou confira os limites no Google AI Studio."
+        : "O Gemini não conseguiu processar a imagem. " + upstreamMessage,
+    }, geminiResponse.status === 429 ? 429 : 502);
   }
 
-  const content = aiBody?.choices?.[0]?.message?.content;
+  const content = geminiBody?.candidates?.[0]?.content?.parts
+    ?.map((part: { text?: unknown }) => typeof part.text === "string" ? part.text : "")
+    .join("");
   if (typeof content !== "string" || !content.trim()) {
-    return jsonResponse({ error: "A IA não retornou uma leitura utilizável. Tente uma foto mais nítida." }, 502);
+    return jsonResponse({ error: "O Gemini não retornou uma leitura utilizável. Tente uma foto mais nítida." }, 502);
   }
 
   let parsed: { market_name?: unknown; products?: unknown };
   try {
     parsed = JSON.parse(content);
   } catch {
-    return jsonResponse({ error: "A IA retornou um formato inesperado. Tente novamente." }, 502);
+    return jsonResponse({ error: "O Gemini retornou um formato inesperado. Tente novamente." }, 502);
   }
 
   const rawProducts = Array.isArray(parsed.products) ? parsed.products : [];
