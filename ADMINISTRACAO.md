@@ -60,17 +60,16 @@ Após a aprovação, peça ao responsável para entrar novamente ou tocar em **V
 ## Limitação atual
 
 A aprovação é manual pelo SQL Editor. Para a equipe aprovar solicitações por uma tela administrativa no app, será necessário construir uma interface protegida ligada a um backend confiável ou a uma função segura de servidor; não se deve conceder poderes de aprovação a qualquer usuário autenticado.
-
 ## Importar tabela de preços com IA
 
-O perfil do mercado tem um importador que recebe uma foto JPG, PNG ou WebP, extrai os produtos e preços usando a API Gemini e mostra uma prévia editável. **Os dados só entram em `public.offers` depois que o administrador confere a prévia e confirma.** Produtos do mesmo mercado com nome e tamanho correspondentes são atualizados; os demais são inseridos.
+O perfil do mercado tem um importador que recebe uma foto JPG, PNG ou WebP e usa um roteador automático de modelos de IA com visão. O app pede ao roteador que escolha um modelo compatível, em vez de fixar Gemini ou OpenAI no código. A foto é lida e convertida em uma prévia editável. **Os dados só entram em `public.offers` depois que o administrador confere a prévia e confirma.** Produtos do mesmo mercado com nome e tamanho correspondentes são atualizados; os demais são inseridos.
 
-### Configurar a chave do Gemini (uma vez)
+### Configurar a chave do serviço de IA (uma vez)
 
-1. Abra o [Google AI Studio](https://aistudio.google.com/apikey) e crie uma chave da API Gemini.
+1. Crie uma conta no [OpenRouter](https://openrouter.ai/) e gere uma chave em https://openrouter.ai/settings/keys.
 2. No Supabase Dashboard do projeto Preço Certo, abra **Edge Functions → Secrets** (ou **Project Settings → Edge Functions → Secrets**, conforme a interface).
-3. Adicione o segredo com o nome exato `GEMINI_API_KEY` e o valor da chave do Google AI Studio. Salve. **Não cole essa chave no HTML, no GitHub ou em mensagens.**
-4. A função `read-price-table` está implantada com verificação de JWT ativada. Ela confirma a sessão e exige vínculo aprovado do usuário com o mercado antes de chamar a IA. Não usa `service_role` no navegador.
-5. Entre no perfil do mercado no app, envie uma foto legível de até 6 MB e toque em **Ler tabela com IA**. Revise nomes, tamanhos, categorias e preços; depois toque em **Conferi tudo — salvar no Supabase**.
+3. Adicione o segredo com o nome exato `OPENROUTER_API_KEY` e o valor da chave do OpenRouter. Salve. **Não cole essa chave no HTML, no GitHub ou em mensagens.**
+4. A função `read-price-table` está implantada com verificação de JWT ativada. Ela confirma a sessão e exige vínculo aprovado do usuário com o mercado antes de chamar o roteador. Não usa `service_role` no navegador.
+5. Entre no perfil do mercado no app, envie uma foto legível e toque em **Ler tabela com IA**. Revise nomes, tamanhos, categorias e preços; depois toque em **Conferi tudo — salvar no Supabase**.
 
-O modelo configurado é `gemini-3.5-flash-lite`. O Google lista uma faixa gratuita para entrada e saída, sujeita a limites/cotas; no nível sem custo, o conteúdo pode ser usado para melhorar os produtos do Google. Consulte os [preços e condições atuais](https://ai.google.dev/gemini-api/docs/pricing?hl=pt-br) antes de usar tabelas com informações comerciais sensíveis. A IA pode errar em fotos desfocadas, com reflexos, tabela inclinada ou números pequenos. Confirme cada preço antes de salvar.
+O modelo solicitado ao roteador é `openrouter/auto`: ele seleciona automaticamente um modelo elegível para a tarefa. Isso **não garante uso gratuito**; a resposta é cobrada conforme o modelo selecionado e a tabela de preços desse modelo. Configure limites de gasto na conta. Fotos enviadas são encaminhadas ao fornecedor de modelo escolhido pelo roteador, e as práticas de retenção/treinamento variam por fornecedor; revise as regras atuais do [OpenRouter](https://openrouter.ai/privacy/) antes de enviar tabelas confidenciais. A IA pode errar em fotos desfocadas, com reflexos, tabela inclinada ou números pequenos. Confirme cada preço antes de salvar.
